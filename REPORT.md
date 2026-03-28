@@ -113,11 +113,96 @@ The agent:
 
 ## Task 2A — Deployed agent
 
-<!-- Paste a short nanobot startup log excerpt showing the gateway started inside Docker -->
+**Nanobot startup log excerpt:**
+
+```
+Using config: /app/nanobot/config.resolved.json
+🐈 Starting nanobot gateway version 0.1.4.post5 on port 18790...
+  Created HEARTBEAT.md
+  Created AGENTS.md
+  Created TOOLS.md
+  Created SOUL.md
+  Created USER.md
+  Created memory/MEMORY.md
+  Created memory/HISTORY.md
+2026-03-28 11:23:58.684 | DEBUG    | nanobot.channels.registry:discover_all:64 - Skipping built-in channel 'matrix': Matrix dependencies not installed.
+2026-03-28 11:24:00.347 | INFO     | nanobot.channels.manager:_init_channels:58 - WebChat channel enabled
+✓ Channels enabled: webchat
+2026-03-28 11:24:01.228 | INFO     | nanobot.channels.manager:start_all:91 - Starting webchat channel...
+2026-03-28 11:24:01.229 | INFO     | nanobot.channels.manager:_dispatch_outbound:119 - Outbound dispatcher started
+```
+
+**Verification:**
+```bash
+docker compose --env-file .env.docker.secret ps
+# NAME                                SERVICE          STATUS
+# se-toolkit-lab-8-nanobot-1          nanobot          Up 8 seconds
+```
+
+The nanobot service is running as a Docker Compose service with:
+- Gateway on port 18790 (internal)
+- WebChat channel enabled on port 8765
+- MCP server 'lms' connected with tools (labs, learners, health, etc.)
+
+**Files created/modified:**
+- `nanobot/entrypoint.py` — resolves env vars into config at runtime, launches `nanobot gateway`
+- `nanobot/Dockerfile` — multi-stage build with uv, copies nanobot-websocket-channel
+- `nanobot/config.json` — webchat channel enabled with `allow_from: ["*"]`
+- `docker-compose.yml` — nanobot service uncommented and configured
+- `caddy/Caddyfile` — `/ws/chat` route uncommented
+
+---
 
 ## Task 2B — Web client
 
-<!-- Screenshot of a conversation with the agent in the Flutter web app -->
+**WebSocket test response:**
+
+```bash
+# Test command using Python:
+uv run --with websockets python3 -c "
+import asyncio, websockets, json
+async def test():
+    async with websockets.connect('ws://localhost:42002/ws/chat?access_key=my-secret-key') as ws:
+        await ws.send(json.dumps({'content': 'What labs are available?'}))
+        print(await ws.recv())
+asyncio.run(test())
+"
+```
+
+**Response:**
+```json
+{"type":"text","content":"I'll check what labs are available in the LMS system.","format":"markdown"}
+```
+
+**Full conversation test:**
+
+Q: `What can you do in this system?`
+
+A: The agent responded with a comprehensive list of capabilities including:
+- File & Workspace Operations (read, write, edit files, list directories, execute shell commands)
+- Web Capabilities (search, fetch content from URLs)
+- Scheduling & Automation (reminders, periodic tasks, subagents)
+- Learning Management (LMS) - View labs, learners, pass rates, completion rates, top learners
+- Memory System (long-term memory, history log)
+- Skill System (install/create skills)
+- Communication (send messages to chat channels)
+
+**Flutter web client:**
+- Accessible at `http://localhost:42002/flutter/`
+- Login protected by `NANOBOT_ACCESS_KEY=my-secret-key`
+- WebSocket endpoint: `ws://localhost:42002/ws/chat?access_key=my-secret-key`
+
+**Files created/modified:**
+- `nanobot-websocket-channel/` — git submodule initialized
+- `nanobot/pyproject.toml` — nanobot-webchat added as dependency
+- `docker-compose.yml` — client-web-flutter service uncommented
+- `caddy/Caddyfile` — `/flutter*` route uncommented
+
+**Verification:**
+```bash
+curl -sf http://localhost:42002/flutter/ | head -20
+# Returns HTML with Flutter web app bootstrap
+```
 
 ## Task 3A — Structured logging
 
