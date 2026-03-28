@@ -81,3 +81,19 @@ When user asks "what happened when a user requested X?":
 - In Docker Compose, use service names: `victorialogs:9428` and `victoriatrace:10428`
 - LogsQL syntax: `_stream:{service="backend"}` filters by service, `level:error` filters by level
 - Trace IDs are long hex strings — you may see them in log entries as `trace_id` field
+
+## One-Shot Investigation Workflow
+
+When the user asks **"What went wrong?"** or **"Check system health"**, follow this exact workflow:
+
+1. **Search error logs first** — Call `logs_search` with `query="level:error"` and `start="-5m"` to find recent errors
+2. **Extract trace ID** — Look through the log results for any `trace_id` field
+3. **Fetch the trace** — If you found a trace ID, call `traces_get` with that ID to see the full span hierarchy
+4. **Summarize findings** — Report:
+   - What error was found (from logs)
+   - Which service failed (from logs and trace)
+   - What operation failed (from trace spans marked `[ERROR]`)
+   - How long it took (from trace duration)
+   - What came before/after (from trace span hierarchy)
+
+**Do not** dump raw JSON. Synthesize a coherent narrative that explains the failure.
