@@ -44,6 +44,18 @@ def resolve_config() -> str:
             if lms_api_key:
                 lms_config["env"]["NANOBOT_LMS_API_KEY"] = lms_api_key
 
+        # Resolve observability MCP server env vars
+        if "observability" in config["tools"]["mcpServers"]:
+            obs_config = config["tools"]["mcpServers"]["observability"]
+            if "env" not in obs_config:
+                obs_config["env"] = {}
+            victorialogs_url = os.environ.get("VICTORIALOGS_URL", "")
+            victoriatrace_url = os.environ.get("VICTORIATRACES_URL", "")
+            if victorialogs_url:
+                obs_config["env"]["VICTORIALOGS_URL"] = victorialogs_url
+            if victoriatrace_url:
+                obs_config["env"]["VICTORIATRACES_URL"] = victoriatrace_url
+
     # Resolve gateway host/port from env vars
     gateway_host = os.environ.get("NANOBOT_GATEWAY_CONTAINER_ADDRESS", "0.0.0.0")
     gateway_port = os.environ.get("NANOBOT_GATEWAY_CONTAINER_PORT", "18790")
