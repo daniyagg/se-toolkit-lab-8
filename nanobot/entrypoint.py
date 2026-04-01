@@ -23,8 +23,9 @@ class Env(BaseSettings):
     nanobot_gateway_container_address: str = Field(..., alias="NANOBOT_GATEWAY_CONTAINER_ADDRESS")
     nanobot_gateway_container_port: int = Field(..., alias="NANOBOT_GATEWAY_CONTAINER_PORT")
 
-    nanobot_webchat_container_address: str = Field(..., alias="NANOBOT_WEBCHAT_CONTAINER_ADDRESS")
-    nanobot_webchat_container_port: int = Field(..., alias="NANOBOT_WEBCHAT_CONTAINER_PORT")
+    # Task 2B — uncomment after you add the webchat channel.
+    # nanobot_webchat_container_address: str = Field(..., alias="NANOBOT_WEBCHAT_CONTAINER_ADDRESS")
+    # nanobot_webchat_container_port: int = Field(..., alias="NANOBOT_WEBCHAT_CONTAINER_PORT")
 
     nanobot_lms_backend_url: str = Field(..., alias="NANOBOT_LMS_BACKEND_URL")
     nanobot_lms_api_key: str = Field(..., alias="NANOBOT_LMS_API_KEY")
@@ -33,9 +34,10 @@ class Env(BaseSettings):
     # nanobot_victorialogs_url: str = Field(..., alias="NANOBOT_VICTORIALOGS_URL")
     # nanobot_victoriatraces_url: str = Field(..., alias="NANOBOT_VICTORIATRACES_URL")
 
-    nanobot_access_key: str = Field(..., alias="NANOBOT_ACCESS_KEY")
-    nanobot_ui_relay_url: str = Field(default="http://127.0.0.1:8766", alias="NANOBOT_UI_RELAY_URL")
-    nanobot_ui_relay_token: str | None = Field(default=None, alias="NANOBOT_UI_RELAY_TOKEN")
+    # Task 2B — uncomment after you add the webchat channel.
+    # nanobot_access_key: str = Field(..., alias="NANOBOT_ACCESS_KEY")
+    # nanobot_ui_relay_url: str = Field(default="http://127.0.0.1:8766", alias="NANOBOT_UI_RELAY_URL")
+    # nanobot_ui_relay_token: str | None = Field(default=None, alias="NANOBOT_UI_RELAY_TOKEN")
 
     otel_traces_exporter: str = Field(..., alias="OTEL_TRACES_EXPORTER")
     otel_metrics_exporter: str = Field(..., alias="OTEL_METRICS_EXPORTER")
@@ -68,13 +70,13 @@ def _resolve_config() -> Config:
     config.gateway.host = env.nanobot_gateway_container_address
     config.gateway.port = env.nanobot_gateway_container_port
 
-    # Webchat channel — stored as extra field on ChannelsConfig (extra="allow").
-    config.channels.webchat = {  # pyright: ignore[reportAttributeAccessIssue]
-        "enabled": True,
-        "host": env.nanobot_webchat_container_address,
-        "port": env.nanobot_webchat_container_port,
-        "allowFrom": ["*"],
-    }
+    # Task 2B — uncomment after you add the webchat channel.
+    # config.channels.webchat = {  # pyright: ignore[reportAttributeAccessIssue]
+    #     "enabled": True,
+    #     "host": env.nanobot_webchat_container_address,
+    #     "port": env.nanobot_webchat_container_port,
+    #     "allowFrom": ["*"],
+    # }
 
     # MCP servers
     config.tools.mcp_servers["lms"] = MCPServerConfig(
@@ -96,15 +98,16 @@ def _resolve_config() -> Config:
     #         **_otel_env(env, "mcp-obs"),
     #     },
     # )
-    config.tools.mcp_servers["webchat"] = MCPServerConfig(
-        command="opentelemetry-instrument",
-        args=["python", "-m", "mcp_webchat"],
-        env={
-            "NANOBOT_UI_RELAY_URL": env.nanobot_ui_relay_url,
-            "NANOBOT_UI_RELAY_TOKEN": env.nanobot_ui_relay_token or env.nanobot_access_key,
-            **_otel_env(env, "mcp-webchat"),
-        },
-    )
+    # Task 2B — uncomment after you add the webchat channel.
+    # config.tools.mcp_servers["webchat"] = MCPServerConfig(
+    #     command="opentelemetry-instrument",
+    #     args=["python", "-m", "mcp_webchat"],
+    #     env={
+    #         "NANOBOT_UI_RELAY_URL": env.nanobot_ui_relay_url,
+    #         "NANOBOT_UI_RELAY_TOKEN": env.nanobot_ui_relay_token or env.nanobot_access_key,
+    #         **_otel_env(env, "mcp-webchat"),
+    #     },
+    # )
 
     return config
 
