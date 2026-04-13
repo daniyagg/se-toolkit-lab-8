@@ -388,6 +388,8 @@ The agent chained all three observability tools in the correct order: error coun
 ## Task 4B — Proactive health check
 
 <!-- Screenshot or transcript of the proactive health report that appears in the Flutter chat -->
+<img width="1280" height="679" alt="image" src="https://github.com/user-attachments/assets/69407f39-9ecd-446b-9441-b6f1da64a3c0" />
+
 
 ## Task 4C — Bug fix and recovery
 
@@ -447,5 +449,7 @@ After restarting PostgreSQL, the backend recovered:
 > - No errors in the last 2 minutes
 
 <!-- Screenshot: healthy health report from Flutter chat -->
+<img width="1918" height="1021" alt="image" src="https://github.com/user-attachments/assets/9e782500-c078-4429-9326-7714cc42b29a" />
+
 
 A new health check (job `62f856ad`) now runs every 15 minutes and reports the system as healthy.
