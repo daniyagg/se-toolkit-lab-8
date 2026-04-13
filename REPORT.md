@@ -255,6 +255,8 @@ After stopping PostgreSQL, the request completes with `404 Not Found` instead of
 ### VictoriaLogs UI query
 
 <!-- Screenshot: VictoriaLogs query result for _time:1h service.name:"Learning Management Service" severity:ERROR -->
+<img width="1280" height="679" alt="image" src="https://github.com/user-attachments/assets/6a5b4682-5aec-4113-abd5-34f9d247246e" />
+
 
 ## Task 3B — Traces
 
@@ -263,9 +265,12 @@ After stopping PostgreSQL, the request completes with `404 Not Found` instead of
 Command used:
 ```bash
 curl -s "http://localhost:42011/select/jaeger/api/traces/fbfc25966777426ac9bbc0b1a382a53d" | python3 -m json.tool | head -200
+
 ```
 
 <!-- Screenshot: healthy trace JSON output or VictoriaTraces UI showing span hierarchy -->
+<img width="1280" height="578" alt="image" src="https://github.com/user-attachments/assets/84f62388-1025-4584-9d1a-947f5139d7e5" />
+
 
 ### Error trace (PostgreSQL stopped)
 
@@ -275,6 +280,8 @@ curl -s "http://localhost:42011/select/jaeger/api/traces/7d1e7169d1ce87545bacd8e
 ```
 
 <!-- Screenshot: error trace JSON output showing where the failure occurred -->
+<img width="1662" height="742" alt="image" src="https://github.com/user-attachments/assets/4c1048c7-1e8a-42cb-899f-a4d16a205825" />
+
 
 ## Task 3C — Observability MCP tools
 
