@@ -262,26 +262,63 @@ After stopping PostgreSQL, the request completes with `404 Not Found` instead of
 
 ### Healthy trace (PostgreSQL running)
 
+**TraceID:** `3d30b21f3af95684965afd7292ed0bee`
+
 Command used:
 ```bash
-curl -s "http://localhost:42011/select/jaeger/api/traces/fbfc25966777426ac9bbc0b1a382a53d" | python3 -m json.tool | head -200
-
+curl -s "http://localhost:42011/select/jaeger/api/traces/3d30b21f3af95684965afd7292ed0bee"
 ```
 
-<!-- Screenshot: healthy trace JSON output or VictoriaTraces UI showing span hierarchy -->
-<img width="1280" height="578" alt="image" src="https://github.com/user-attachments/assets/84f62388-1025-4584-9d1a-947f5139d7e5" />
+**Span hierarchy (8 spans, total ~94ms):**
 
+```
+GET /items/ [server] — 94,114us — status=200
+  ├── connect [client, sqlalchemy] — 58,104us — postgres:5432
+  ├── SELECT db-lab-8 [client, sqlalchemy] — 26,631us — "SELECT item.id, item.type, ... FROM item"
+  ├── BEGIN; [client, asyncpg] — 5,415us
+  ├── ROLLBACK; [client, asyncpg] — 365us
+  └── GET /items/ http send [internal, fastapi] — 109us — status=200 (http.response.start)
+      ├── GET /items/ http send — 35us — http.response.body
+      └── GET /items/ http send — 26us — http.response.body
+```
+
+The healthy trace shows a clean request lifecycle: FastAPI receives `GET /items/`, SQLAlchemy connects to PostgreSQL (58ms), executes the SELECT query (27ms), wraps in a transaction (BEGIN → ROLLBACK), and returns HTTP 200.
+
+<!-- Screenshot: VictoriaTraces UI showing the span hierarchy for trace 3d30b21f3af95684965afd7292ed0bee -->
+<img width="1280" height="578" alt="image" src="https://github.com/user-attachments/assets/84f62388-1025-4584-9d1a-947f5139d7e5" />
 
 ### Error trace (PostgreSQL stopped)
 
+**TraceID:** `7d1e7169d1ce87545bacd8e4c1346220`
+
 Command used:
 ```bash
-curl -s "http://localhost:42011/select/jaeger/api/traces/7d1e7169d1ce87545bacd8e4c1346220" | python3 -m json.tool | head -200
+curl -s "http://localhost:42011/select/jaeger/api/traces/7d1e7169d1ce87545bacd8e4c1346220"
 ```
 
-<!-- Screenshot: error trace JSON output showing where the failure occurred -->
-<img width="1662" height="742" alt="image" src="https://github.com/user-attachments/assets/4c1048c7-1e8a-42cb-899f-a4d16a205825" />
+**Span hierarchy (6 spans, error on connect):**
 
+```
+GET /items/ [server] — 237,446us — status=404
+  ├── connect [client, sqlalchemy] — 229,808us — ERROR: [Errno -2] Name or service not known
+  │   └── exception log: "Name or service not known" at sqlalchemy/engine/base.py:3293
+  └── GET /items/ http send [internal, fastapi] — 74us — status=404 (http.response.start)
+      ├── GET /items/ http send — 52us — http.response.body
+      └── GET /items/ http send — 42us — http.response.body
+```
+
+The error trace shows the failure point clearly: the `connect` span (229ms) throws `[Errno -2] Name or service not known` — a DNS resolution failure because PostgreSQL is stopped. No `SELECT` or `BEGIN` spans appear because the database connection never succeeded. The request returns HTTP 404 instead of 200.
+
+Key difference from healthy trace:
+| Span | Healthy | Error |
+|------|---------|-------|
+| `connect` | 58ms ✅ | 229ms ❌ DNS failure |
+| `SELECT` | 27ms ✅ | missing |
+| `BEGIN` | 5ms ✅ | missing |
+| HTTP status | 200 | 404 |
+
+<!-- Screenshot: VictoriaTraces UI showing error trace with exception log on connect span -->
+<img width="1662" height="742" alt="image" src="https://github.com/user-attachments/assets/4c1048c7-1e8a-42cb-899f-a4d16a205825" />
 
 ## Task 3C — Observability MCP tools
 
