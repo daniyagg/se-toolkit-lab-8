@@ -155,11 +155,77 @@ The agent followed the skill strategy: called `lms_labs` first, listed all labs 
 
 ## Task 2A — Deployed agent
 
-<!-- Paste a short nanobot startup log excerpt showing the gateway started inside Docker -->
+```
+NAME                                IMAGE                                                                                         COMMAND                  SERVICE          CREATED       STATUS                 PORTS
+se-toolkit-lab-8-backend-1          se-toolkit-lab-8-backend                                                                      "opentelemetry-instr…"   backend          9 hours ago   Up 9 hours             127.0.0.1:42001->8000/tcp
+se-toolkit-lab-8-caddy-1            harbor.pg.innopolis.university/docker-hub-cache/caddy:2.11-alpine                             "caddy run --config …"   caddy            6 hours ago   Up 6 hours             443/tcp, 2019/tcp, 443/udp, 0.0.0.0:42002->80/tcp
+se-toolkit-lab-8-nanobot-1          se-toolkit-lab-8-nanobot                                                                      "python /app/nanobot…"   nanobot          6 hours ago   Up 6 hours
+se-toolkit-lab-8-otel-collector-1   harbor.pg.innopolis.university/docker-hub-cache/otel/opentelemetry-collector-contrib:latest   "/otelcol-contrib --…"   otel-collector   9 hours ago   Up 9 hours             4317-4318/tcp, 55679/tcp
+se-toolkit-lab-8-pgadmin-1          harbor.pg.innopolis.university/docker-hub-cache/dpage/pgadmin4:latest                         "/entrypoint.sh"         pgadmin          9 hours ago   Up 9 hours             443/tcp, 127.0.0.1:42003->80/tcp
+se-toolkit-lab-8-postgres-1         harbor.pg.innopolis.university/docker-hub-cache/postgres:18.3-alpine                          "docker-entrypoint.s…"   postgres         9 hours ago   Up 9 hours (healthy)   127.0.0.1:42004->5432/tcp
+se-toolkit-lab-8-qwen-code-api-1    se-toolkit-lab-8-qwen-code-api                                                                "docker-entrypoint.s…"   qwen-code-api    9 hours ago   Up 9 hours (healthy)   127.0.0.1:42005->8080/tcp
+se-toolkit-lab-8-victorialogs-1     harbor.pg.innopolis.university/docker-hub-cache/victoriametrics/victoria-logs:latest          "/victoria-logs-prod…"   victorialogs     9 hours ago   Up 9 hours             127.0.0.1:42010->9428/tcp
+se-toolkit-lab-8-victoriatraces-1   harbor.pg.innopolis.university/docker-hub-cache/victoriametrics/victoria-traces:latest        "/victoria-traces-pr…"   victoriatraces   9 hours ago   Up 9 hours             127.0.0.1:42011->10428/tcp
+```
+
+**Nanobot startup log excerpt:**
+
+```
+Using config: /app/nanobot/config.resolved.json
+🐈 Starting nanobot gateway version 0.1.4.post5 on port 18790...
+✓ Channels enabled: webchat
+Starting webchat channel...
+WebChat relay listening on 127.0.0.1:8766
+WebChat starting on 0.0.0.0:8765
+MCP server 'lms': connected, 9 tools registered
+MCP: registered tool 'mcp_webchat_ui_message' from server 'webchat'
+MCP server 'webchat': connected, 1 tools registered
+Agent loop started
+```
+
+All services started cleanly. Webchat channel enabled, both MCP servers (lms + webchat) connected.
 
 ## Task 2B — Web client
 
-<!-- Screenshot of a conversation with the agent in the Flutter web app -->
+### WebSocket endpoint test
+
+```
+$ echo '{"content":"What labs are available?"}' | websocat "ws://localhost:42002/ws/chat?access_key=my-secret-key"
+
+Response:
+Here are the available labs:
+1. Lab 01 – Products, Architecture & Roles
+2. Lab 02 – Run, Fix, and Deploy a Backend Service
+3. Lab 03 – Backend API: Explore, Debug, Implement, Deploy
+4. Lab 04 – Testing, Front-end, and AI Agents
+5. Lab 05 – Data Pipeline and Analytics Dashboard
+6. Lab 06 – Build Your Own Agent
+7. Lab 07 – Build a Client with an AI Coding Agent
+8. Lab 08 – lab-08
+```
+
+### Flutter web client tests
+
+**"What can you do in this system?"** — agent responded with capabilities description.
+
+**"How is the backend doing?"** — real LMS data:
+```
+The backend is healthy 🟢 — currently holding 56 items. Everything looks good!
+```
+
+**"Show me the scores"** — structured UI choice rendered (not raw JSON):
+```
+Type: choice
+Options:
+  - Lab 01 – Products, Architecture & Roles (lab-01)
+  - Lab 02 – Run, Fix, and Deploy a Backend Service (lab-02)
+  - Lab 03 – Backend API: Explore, Debug, Implement, Deploy (lab-03)
+  - ... (8 labs total)
+
+Agent follow-up: "I've sent you a list of available labs — please pick which one you'd like to see the scores for! 📊"
+```
+
+The Flutter client at `http://<vm-ip>:42002/flutter` loads the login screen, accepts the access key, and renders structured choice prompts instead of raw JSON.
 
 ## Task 3A — Structured logging
 
