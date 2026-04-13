@@ -12,9 +12,9 @@ dependencies = [
     "opentelemetry-instrumentation-logging>=0.61b0",
     # Task 1 — uncomment after you add the LMS MCP server.
     "mcp-lms",
-    # Task 2B — uncomment after you add the webchat channel.
-    # "mcp-webchat",
-    # "nanobot-webchat",
+    # Task 2B — webchat channel
+    "mcp-webchat",
+    "nanobot-webchat",
     # Task 3 — uncomment after you add mcp-obs.
     # "mcp-obs",
     "nanobot-ai",

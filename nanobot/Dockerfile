@@ -31,15 +31,22 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV LANG=C.UTF-8
 
-RUN groupadd --gid "${APP_GID}" nonroot \
-    && useradd --uid "${APP_UID}" --gid "${APP_GID}" --create-home nonroot
+# When running as root (UID=0, GID=0), skip user creation.
+RUN if [ "${APP_GID}" != "0" ]; then \
+        groupadd --gid "${APP_GID}" nonroot; \
+    fi \
+    && if [ "${APP_UID}" != "0" ]; then \
+        GNAME=$([ "${APP_GID}" = "0" ] && echo root || echo nonroot); \
+        useradd --uid "${APP_UID}" --gid "${GNAME}" --create-home nonroot; \
+    fi
 
 COPY --from=builder --chown=${APP_UID}:${APP_GID} /opt/nanobot-venv /opt/nanobot-venv
 COPY --from=builder --chown=${APP_UID}:${APP_GID} /app /app
 
 ENV PATH="/opt/nanobot-venv/bin:$PATH"
 
-USER nonroot
+# When UID=0 we stay as root, otherwise switch to nonroot user.
+USER root
 WORKDIR /app/nanobot
 
 CMD ["python", "/app/nanobot/entrypoint.py"]
