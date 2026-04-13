@@ -354,15 +354,102 @@ Key difference from healthy trace:
 
 ## Task 4A — Multi-step investigation
 
-<!-- Paste the agent's response to "What went wrong?" showing chained log + trace investigation -->
+**Agent's response to "What went wrong?"** (with PostgreSQL stopped):
+
+> Here's what went wrong:
+>
+> **Root cause: DNS resolution failure for the PostgreSQL database.**
+>
+> The trace shows the full request path:
+>
+> 1. **MCP-LMS** → sent `GET http://backend:8000/items/`
+> 2. **Learning Management Service** → received the request, tried to query the `item` table
+> 3. **Database connection failed** → `socket.gaierror: [Errno -2] Name or service not known`
+>    - Target: `postgres:5432`, database `db-lab-8`
+> 4. **404 returned** → the LMS returned a 404 because it couldn't reach the database
+>
+> **The LMS backend can't resolve the hostname `postgres`.** This typically means:
+> - The PostgreSQL container is **down** or **restarting**
+> - The `postgres` container is **not on the same Docker network** as the backend
+> - The database hostname in the LMS configuration is **incorrect**
+>
+> Would you like me to check if there are any other recent errors, or is this something you need to fix on the infrastructure side?
+
+**MCP tool calls observed** (from nanobot logs):
+
+```
+mcp_obs_logs_error_count({"service": "Learning Management Service", "time_window": "10m"})
+mcp_obs_logs_search({"query": "_time:10m service.name:\"Learning Management Service\" severity:ERROR", "limit": 10})
+mcp_obs_traces_get({"trace_id": "4f18a3dae8b1b9a281a30810a9ea42d9"})
+```
+
+The agent chained all three observability tools in the correct order: error count → log search → trace fetch → summary.
 
 ## Task 4B — Proactive health check
 
 <!-- Screenshot or transcript of the proactive health report that appears in the Flutter chat -->
+<img width="1280" height="679" alt="image" src="https://github.com/user-attachments/assets/69407f39-9ecd-446b-9441-b6f1da64a3c0" />
+
 
 ## Task 4C — Bug fix and recovery
 
-<!-- 1. Root cause identified
-     2. Code fix (diff or description)
-     3. Post-fix response to "What went wrong?" showing the real underlying failure
-     4. Healthy follow-up report or transcript after recovery -->
+### 1. Root cause
+
+The planted bug was in `backend/src/lms_backend/routers/items.py`, lines 18–30:
+
+```python
+@router.get("/", response_model=list[ItemRecord])
+async def get_items(session: AsyncSession = Depends(get_session)):
+    try:
+        return await read_items(session)
+    except Exception as exc:
+        logger.warning("items_list_failed_as_not_found", ...)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Items not found",
+        ) from exc
+```
+
+A broad `except Exception` block caught **all** errors (including PostgreSQL connection failures) and returned a misleading `404 Items not found`. The real cause — DNS resolution failure for `postgres:5432` — was hidden.
+
+### 2. Fix
+
+Removed the `try/except` wrapper so that database errors propagate to the global exception handler in `main.py`, which returns `500 Internal Server Error` with the real error details:
+
+```python
+@router.get("/", response_model=list[ItemRecord])
+async def get_items(session: AsyncSession = Depends(get_session)):
+    """Get all items."""
+    return await read_items(session)
+```
+
+### 3. Post-fix failure check
+
+After redeploy, with PostgreSQL stopped, asking **"What went wrong?"** now shows:
+
+> The LMS backend is **still unable to connect to its PostgreSQL database**. Here's the summary:
+>
+> | Issue | Detail |
+> |-------|--------|
+> | **Error** | `socket.gaierror: [Errno -2] Name or service not known` |
+> | **Root Cause** | The backend container cannot resolve the hostname `postgres` |
+> | **Target** | `postgres:5432`, database `db-lab-8` |
+> | **Symptom** | `GET /items/` returns **500 Internal Server Error** |
+> | **Impact** | All lab data queries fail — no labs, learners, or scores can be fetched |
+
+**Key change:** Before the fix → `404 Items not found`. After the fix → `500 Internal Server Error` with the real PostgreSQL connection failure.
+
+### 4. Healthy follow-up
+
+After restarting PostgreSQL, the backend recovered:
+
+> The backend is **fully recovered** and healthy! ✅
+> - Status: Healthy
+> - Items: 56
+> - No errors in the last 2 minutes
+
+<!-- Screenshot: healthy health report from Flutter chat -->
+<img width="1918" height="1021" alt="image" src="https://github.com/user-attachments/assets/9e782500-c078-4429-9326-7714cc42b29a" />
+
+
+A new health check (job `62f856ad`) now runs every 15 minutes and reports the system as healthy.
