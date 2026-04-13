@@ -30,8 +30,8 @@ class Settings(BaseSettings):
     nanobot_lms_api_key: str = Field(..., alias="NANOBOT_LMS_API_KEY")
 
     # Task 3 — uncomment after you add mcp-obs.
-    # nanobot_victorialogs_url: str = Field(..., alias="NANOBOT_VICTORIALOGS_URL")
-    # nanobot_victoriatraces_url: str = Field(..., alias="NANOBOT_VICTORIATRACES_URL")
+    nanobot_victorialogs_url: str = Field(..., alias="NANOBOT_VICTORIALOGS_URL")
+    nanobot_victoriatraces_url: str = Field(..., alias="NANOBOT_VICTORIATRACES_URL")
 
     nanobot_access_key: str = Field(..., alias="NANOBOT_ACCESS_KEY")
     nanobot_ui_relay_url: str = Field(default="http://127.0.0.1:8766", alias="NANOBOT_UI_RELAY_URL")
@@ -86,15 +86,15 @@ def _resolve_config() -> Config:
         },
     )
     # Task 3 — uncomment after you add mcp-obs.
-    # config.tools.mcp_servers["obs"] = MCPServerConfig(
-    #     command="opentelemetry-instrument",
-    #     args=["python", "-m", "mcp_obs"],
-    #     env={
-    #         "NANOBOT_VICTORIALOGS_URL": env.nanobot_victorialogs_url,
-    #         "NANOBOT_VICTORIATRACES_URL": env.nanobot_victoriatraces_url,
-    #         **_otel_env(env, "mcp-obs"),
-    #     },
-    # )
+    config.tools.mcp_servers["obs"] = MCPServerConfig(
+        command="opentelemetry-instrument",
+        args=["python", "-m", "mcp_obs"],
+        env={
+            "NANOBOT_VICTORIALOGS_URL": env.nanobot_victorialogs_url,
+            "NANOBOT_VICTORIATRACES_URL": env.nanobot_victoriatraces_url,
+            **_otel_env(env, "mcp-obs"),
+        },
+    )
     config.tools.mcp_servers["webchat"] = MCPServerConfig(
         command="opentelemetry-instrument",
         args=["python", "-m", "mcp_webchat"],
