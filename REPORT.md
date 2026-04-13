@@ -230,15 +230,83 @@ The Flutter client at `http://<vm-ip>:42002/flutter` loads the login screen, acc
 
 ## Task 3A — Structured logging
 
-<!-- Paste happy-path and error-path log excerpts, VictoriaLogs query screenshot -->
+### Happy-path log excerpt (request_started → request_completed, status 200)
+
+```
+backend-1  | 2026-04-13 19:17:01,835 INFO [lms_backend.main] [main.py:62] [trace_id=fbfc25966777426ac9bbc0b1a382a53d span_id=271a3928f5ebf037 resource.service.name=Learning Management Service trace_sampled=True] - request_started
+backend-1  | 2026-04-13 19:17:01,837 INFO [lms_backend.auth] [auth.py:30] [trace_id=fbfc25966777426ac9bbc0b1a382a53d span_id=271a3928f5ebf037 resource.service.name=Learning Management Service trace_sampled=True] - auth_success
+backend-1  | 2026-04-13 19:17:01,838 INFO [lms_backend.db.items] [items.py:16] [trace_id=fbfc25966777426ac9bbc0b1a382a53d span_id=271a3928f5ebf037 resource.service.name=Learning Management Service trace_sampled=True] - db_query
+backend-1  | 2026-04-13 19:17:01,845 INFO [lms_backend.main] [main.py:74] [trace_id=fbfc25966777426ac9bbc0b1a382a53d span_id=271a3928f5ebf037 resource.service.name=Learning Management Service trace_sampled=True] - request_completed
+backend-1  | INFO:     172.21.0.9:52712 - "GET /items/ HTTP/1.1" 200 OK
+```
+
+All four structured events share the same `trace_id` — showing the full request lifecycle.
+
+### Error-path log excerpt (PostgreSQL stopped)
+
+```
+backend-1  | 2026-04-13 19:36:27,200 INFO [lms_backend.main] [main.py:74] [trace_id=7d1e7169d1ce87545bacd8e4c1346220 span_id=2a2ea3b2ddc6db9f resource.service.name=Learning Management Service trace_sampled=True] - request_completed
+backend-1  | INFO:     172.21.0.9:40256 - "GET /items/ HTTP/1.1" 404 Not Found
+backend-1  | INFO:     172.21.0.9:40256 - "GET /items/ HTTP/1.1" 404
+```
+
+After stopping PostgreSQL, the request completes with `404 Not Found` instead of `200 OK`. The `db_query` event is missing — the database connection failed so the query never executed.
+
+### VictoriaLogs UI query
+
+<!-- Screenshot: VictoriaLogs query result for _time:1h service.name:"Learning Management Service" severity:ERROR -->
 
 ## Task 3B — Traces
 
-<!-- Screenshots: healthy trace span hierarchy, error trace -->
+### Healthy trace (PostgreSQL running)
+
+Command used:
+```bash
+curl -s "http://localhost:42011/select/jaeger/api/traces/fbfc25966777426ac9bbc0b1a382a53d" | python3 -m json.tool | head -200
+```
+
+<!-- Screenshot: healthy trace JSON output or VictoriaTraces UI showing span hierarchy -->
+
+### Error trace (PostgreSQL stopped)
+
+Command used:
+```bash
+curl -s "http://localhost:42011/select/jaeger/api/traces/7d1e7169d1ce87545bacd8e4c1346220" | python3 -m json.tool | head -200
+```
+
+<!-- Screenshot: error trace JSON output showing where the failure occurred -->
 
 ## Task 3C — Observability MCP tools
 
-<!-- Paste agent responses to "any errors in the last hour?" under normal and failure conditions -->
+### Normal conditions (PostgreSQL running)
+
+**Question:** "Any LMS backend errors in the last 10 minutes?"
+
+**Response:**
+> No errors found in the LMS backend in the last 10 minutes. The system appears to be running cleanly.
+
+### Failure conditions (PostgreSQL stopped)
+
+**Question:** "Any LMS backend errors in the last 10 minutes?"
+
+**Response:**
+> There was **1 error** in the Learning Management Service in the last 10 minutes. Let me pull the details.
+>
+> Found the issue! There are **2 recent errors** in the Learning Management Service. Both are **DNS resolution failures** during database queries:
+>
+> - **Error**: `[Errno -2] Name or service not known`
+> - **Operation**: `SELECT` on the `item` table
+> - **Time**: ~20:24–20:25 UTC
+>
+> This means the LMS backend **can't resolve the database hostname** — it's a DNS/network connectivity issue, not a code problem. This explains the HTTP 404 we saw earlier when trying to fetch labs.
+>
+> ## Summary
+>
+> **Yes, there are LMS backend errors in the last 10 minutes.** The issue is a **DNS resolution failure** — the LMS backend can't resolve the database hostname (`[Errno -2] Name or service not known`) when trying to query the `item` table. This is why the `/items/` endpoint returns HTTP 404.
+>
+> **Root cause**: Network/DNS configuration issue between the LMS backend and the database. The database hostname is unresolvable from the backend container.
+>
+> **Recommended fix**: Check that the database service is running and that the hostname (likely something like `postgres` or `db`) is correctly configured in the LMS backend's environment variables and resolvable within the Docker/network setup.
 
 ## Task 4A — Multi-step investigation
 
