@@ -186,6 +186,7 @@ Agent loop started
 All services started cleanly. Webchat channel enabled, both MCP servers (lms + webchat) connected.
 
 ## Task 2B — Web client
+<img width="1919" height="964" alt="image" src="https://github.com/user-attachments/assets/2f180207-c175-41c4-918c-82d468cbc98d" />
 
 ### WebSocket endpoint test
 
